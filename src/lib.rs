@@ -3,8 +3,8 @@ pub struct Escrow {
     pub userB: Pubkey;
     pub token_A_mint: Pubkey;
     pub token_B_mint: Pubkey;
-    pub token_a_deposited: bool;
-    pub token_b_deposited: bool;
+    pub token_A_deposited: bool;
+    pub token_B_deposited: bool;
     pub vault_pda: Pubkey;
     pub status: EscrowStatus;
 }
