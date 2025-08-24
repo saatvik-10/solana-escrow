@@ -1,16 +1,18 @@
+use solana_program::pubkey::Pubkey;
+
 pub struct Escrow {
-    pub userA: Pubkey;
-    pub userB: Pubkey;
-    pub token_A_mint: Pubkey;
-    pub token_B_mint: Pubkey;
-    pub token_A_deposited: bool;
-    pub token_B_deposited: bool;
-    pub vault_pda: Pubkey;
-    pub status: EscrowStatus;
+    pub user_a: Pubkey,
+    pub user_b: Pubkey,
+    pub token_a_mint: Pubkey,
+    pub token_b_mint: Pubkey,
+    pub token_a_deposited: bool,
+    pub token_b_deposited: bool,
+    pub vault_pda: Pubkey,
+    pub status: EscrowStatus,
 }
 
 pub enum EscrowStatus {
-    Active, 
+    Active,
     Completed,
-    Cancelled
+    Cancelled,
 }
