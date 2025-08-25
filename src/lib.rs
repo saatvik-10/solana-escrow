@@ -1,5 +1,9 @@
 use solana_program::pubkey::Pubkey;
 
+pub mod instructions;
+pub mod processor;
+pub mod errors;
+
 pub struct Escrow {
     pub user_a: Pubkey,
     pub user_b: Pubkey,
