@@ -21,6 +21,9 @@ pub fn process_instruction(
             }
 
             check_rent_exempt(escrow_account, rent_account)?;
+
+            let (vault_pda, vault_bump) =
+                Pubkey::find_program_address(&[b"vault", escrow_account.key.as_ref()], program_id);
         }
 
         EscrowInstruction::Deposit { .. } => {}
