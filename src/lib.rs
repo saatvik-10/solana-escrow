@@ -1,9 +1,11 @@
+use borsh::{BorshDeserialize, BorshSerialize};
 use solana_program::pubkey::Pubkey;
 
+pub mod errors;
 pub mod instructions;
 pub mod processor;
-pub mod errors;
 
+#[derive(Debug, BorshSerialize, BorshDeserialize)]
 pub struct Escrow {
     pub user_a: Pubkey,
     pub user_b: Pubkey,
@@ -15,6 +17,7 @@ pub struct Escrow {
     pub status: EscrowStatus,
 }
 
+#[derive(Debug, BorshSerialize, BorshDeserialize)]
 pub enum EscrowStatus {
     Active,
     Completed,
