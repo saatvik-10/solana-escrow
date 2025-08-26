@@ -5,6 +5,7 @@ use solana_program::program_error::ProgramError;
 pub enum EscrowError {
     AlreadyDeposited,
     EscrowNotReady,
+    InvalidAmount,
     UnauthorizedCancel,
 }
 
@@ -13,7 +14,8 @@ impl From<EscrowError> for ProgramError {
         match e {
             EscrowError::AlreadyDeposited => ProgramError::Custom(1000),
             EscrowError::EscrowNotReady => ProgramError::Custom(1001),
-            EscrowError::UnauthorizedCancel => ProgramError::Custom(1002),
+            EscrowError::InvalidAmount => ProgramError::Custom(1002),
+            EscrowError::UnauthorizedCancel => ProgramError::Custom(1003),
         }
     }
 }
