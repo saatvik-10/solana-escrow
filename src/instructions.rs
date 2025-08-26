@@ -1,10 +1,10 @@
+use borsh::{BorshDeserialize, BorshSerialize};
 use solana_program::{
     account_info::AccountInfo,
     program_error::ProgramError,
     pubkey::Pubkey,
     sysvar::{Sysvar, rent::Rent},
 };
-use borsh::{BorshDeserialize, BorshSerialize};
 
 #[derive(BorshDeserialize, BorshSerialize, Debug)]
 pub enum EscrowInstruction {
@@ -15,7 +15,9 @@ pub enum EscrowInstruction {
         amount_a: u64,
         amount_b: u64,
     },
-    Deposit,
+    Deposit {
+        amount: u64,
+    },
     CompleteSwap,
     Cancel,
 }

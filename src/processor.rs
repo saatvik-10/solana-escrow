@@ -1,6 +1,6 @@
-use crate::Escrow;
 use crate::errors::EscrowError;
 use crate::instructions::{EscrowInstruction, check_rent_exempt};
+use crate::{Escrow, EscrowStatus};
 use borsh::{BorshDeserialize, BorshSerialize};
 use solana_program::{
     account_info::AccountInfo, entrypoint::ProgramResult, program_error::ProgramError,
@@ -43,18 +43,23 @@ pub fn process_instruction(
                 user_b: Pubkey::default(),
                 token_a_mint,
                 token_b_mint,
+                amount_a,
+                amount_b,
                 token_a_deposited: false,
                 token_b_deposited: false,
                 vault_pda,
-                status: crate::EscrowStatus::Active,
+                status: EscrowStatus::Active,
             };
 
             escrow.serialize(&mut &mut escrow_account.data.borrow_mut()[..])?;
         }
 
-        EscrowInstruction::Deposit { .. } => {
+        EscrowInstruction::Deposit { amount } => {
             let depositor_account = &accounts[0];
             let escrow_account = &accounts[1];
+            let depositor_token_account = &accounts[2];
+            let vault_token_account = &accounts[3];
+            let token_program = &accounts[4];
 
             let mut escrow = Escrow::try_from_slice(&escrow_account.data.borrow())?;
 
@@ -82,6 +87,17 @@ pub fn process_instruction(
             //if user_b depositing for the first , setting their address
             if is_user_b && escrow.user_b == Pubkey::default() {
                 escrow.user_b = *depositor_account.key;
+            }
+
+            //token and the amount to transfer
+            let (token_mint, expected_amount) = if is_user_a {
+                (escrow.token_a_mint, escrow.amount_a)
+            } else {
+                (escrow.token_b_mint, escrow.amount_b)
+            };
+
+            if amount != expected_amount {
+                return Err(EscrowError::InvalidAmount.into());
             }
         }
 
