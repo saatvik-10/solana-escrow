@@ -52,7 +52,38 @@ pub fn process_instruction(
             escrow.serialize(&mut &mut escrow_account.data.borrow_mut()[..])?;
         }
 
-        EscrowInstruction::Deposit { .. } => {}
+        EscrowInstruction::Deposit { .. } => {
+            let depositor_account = &accounts[0];
+            let escrow_account = &accounts[1];
+
+            let mut escrow = Escrow::try_from_slice(&escrow_account.data.borrow())?;
+
+            if !depositor_account.is_signer {
+                return Err(EscrowError::UnauthorizedCancel.into());
+            }
+
+            //checking if user_a depositing of user_b
+            let is_user_a = depositor_account.key == &escrow.user_a;
+            let is_user_b = depositor_account.key == &escrow.user_b;
+
+            if !is_user_a && !is_user_b {
+                return Err(EscrowError::UnauthorizedCancel.into());
+            }
+
+            //double deposit checking
+            if is_user_a && escrow.token_a_deposited {
+                return Err(EscrowError::AlreadyDeposited.into());
+            }
+
+            if is_user_b && escrow.token_b_deposited {
+                return Err(EscrowError::AlreadyDeposited.into());
+            }
+
+            //if user_b depositing for the first , setting their address
+            if is_user_b && escrow.user_b == Pubkey::default() {
+                escrow.user_b = *depositor_account.key;
+            }
+        }
 
         EscrowInstruction::CompleteSwap { .. } => {}
 
