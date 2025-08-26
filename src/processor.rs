@@ -3,8 +3,8 @@ use crate::instructions::{EscrowInstruction, check_rent_exempt};
 use crate::{Escrow, EscrowStatus};
 use borsh::{BorshDeserialize, BorshSerialize};
 use solana_program::{
-    account_info::AccountInfo, entrypoint::ProgramResult, program_error::ProgramError,
-    pubkey::Pubkey,
+    account_info::AccountInfo, entrypoint::ProgramResult, program::invoke,
+    program_error::ProgramError, pubkey::Pubkey,
 };
 
 pub fn process_instruction(
@@ -99,6 +99,27 @@ pub fn process_instruction(
             if amount != expected_amount {
                 return Err(EscrowError::InvalidAmount.into());
             }
+
+            //token transfer instruction
+            let transfer_instruction = spl_token::instruction::transfer(
+                token_program.key,
+                depositor_token_account.key,
+                vault_token_account.key,
+                depositor_account.key,
+                &[],
+                amount,
+            )?;
+
+            //cpi transfer
+            invoke(
+                &transfer_instruction,
+                &[
+                    depositor_account.clone(),
+                    vault_token_account.clone(),
+                    depositor_token_account.clone(),
+                    token_program.clone(),
+                ],
+            )?;
         }
 
         EscrowInstruction::CompleteSwap { .. } => {}
