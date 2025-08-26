@@ -1,8 +1,11 @@
 use crate::Escrow;
 use crate::errors::EscrowError;
 use crate::instructions::{EscrowInstruction, check_rent_exempt};
-use borsh::BorshDeserialize;
-use solana_program::{account_info::AccountInfo, entrypoint::ProgramResult, pubkey::Pubkey};
+use borsh::{BorshDeserialize, BorshSerialize};
+use solana_program::{
+    account_info::AccountInfo, entrypoint::ProgramResult, program_error::ProgramError,
+    pubkey::Pubkey,
+};
 
 pub fn process_instruction(
     program_id: &Pubkey,
@@ -28,6 +31,10 @@ pub fn process_instruction(
 
             check_rent_exempt(escrow_account, rent_account)?;
 
+            if escrow_account.owner != program_id {
+                return Err(ProgramError::IncorrectProgramId);
+            }
+
             let (vault_pda, _vault_bump) =
                 Pubkey::find_program_address(&[b"vault", escrow_account.key.as_ref()], program_id);
 
@@ -41,6 +48,8 @@ pub fn process_instruction(
                 vault_pda,
                 status: crate::EscrowStatus::Active,
             };
+
+            escrow.serialize(&mut &mut escrow_account.data.borrow_mut()[..])?;
         }
 
         EscrowInstruction::Deposit { .. } => {}
