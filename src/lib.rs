@@ -11,6 +11,8 @@ pub struct Escrow {
     pub user_b: Pubkey,
     pub token_a_mint: Pubkey,
     pub token_b_mint: Pubkey,
+    pub amount_a: u64,
+    pub amount_b: u64,
     pub token_a_deposited: bool,
     pub token_b_deposited: bool,
     pub vault_pda: Pubkey,
