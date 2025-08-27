@@ -2,6 +2,7 @@ use crate::errors::EscrowError;
 use crate::instructions::{EscrowInstruction, check_rent_exempt};
 use crate::{Escrow, EscrowStatus};
 use borsh::{BorshDeserialize, BorshSerialize};
+use solana_program::program::invoke_signed;
 use solana_program::{
     account_info::AccountInfo, entrypoint::ProgramResult, msg, program::invoke,
     program_error::ProgramError, pubkey::Pubkey,
@@ -134,7 +135,82 @@ pub fn process_instruction(
             msg!("Deposit successful! Amount: {}", amount);
         }
 
-        EscrowInstruction::CompleteSwap { .. } => {}
+        EscrowInstruction::CompleteSwap { .. } => {
+            let caller = &accounts[0];
+            let escrow_account = &accounts[1];
+            let vault_authority = &accounts[2];
+            let vault_token_a = &accounts[3];
+            let vault_token_b = &accounts[4];
+            let user_a_token_account = &accounts[5];
+            let user_b_token_account = &accounts[6];
+            let token_program = &accounts[7];
+
+            if !caller.is_signer {
+                return Err(EscrowError::UnauthorizedCancel.into());
+            }
+
+            let mut escrow = Escrow::try_from_slice(&escrow_account.data.borrow())?;
+
+            if caller.key != &escrow.user_a && caller.key != &escrow.user_b {
+                return Err(EscrowError::UnauthorizedCancel.into());
+            }
+
+            if !escrow.token_a_deposited || !escrow.token_b_deposited {
+                return Err(EscrowError::EscrowNotReady.into());
+            }
+
+            let (vault_pda, vault_bump) =
+                Pubkey::find_program_address(&[b"vault", escrow_account.key.as_ref()], program_id);
+
+            let transfer_a_ix = spl_token::instruction::transfer(
+                token_program.key,
+                vault_token_a.key,
+                user_a_token_account.key,
+                &vault_pda,
+                &[],
+                escrow.amount_a,
+            )?;
+
+            let transfer_b_ix = spl_token::instruction::transfer(
+                token_program.key,
+                vault_token_b.key,
+                user_b_token_account.key,
+                &vault_pda,
+                &[],
+                escrow.amount_b,
+            )?;
+
+            let seeds: &[&[u8]] = &[b"vault", escrow_account.key.as_ref(), &[vault_bump]];
+            let signer_seeds = &[seeds];
+
+            invoke_signed(
+                &transfer_a_ix,
+                &[
+                    vault_token_a.clone(),
+                    user_a_token_account.clone(),
+                    vault_authority.clone(),
+                    token_program.clone(),
+                ],
+                signer_seeds,
+            )?;
+
+            invoke_signed(
+                &transfer_b_ix,
+                &[
+                    vault_token_b.clone(),
+                    user_b_token_account.clone(),
+                    vault_authority.clone(),
+                    token_program.clone(),
+                ],
+                signer_seeds,
+            )?;
+
+            escrow.status = EscrowStatus::Completed;
+
+            escrow.serialize(&mut &mut escrow_account.data.borrow_mut()[..])?;
+
+            msg!("Tokens have been swapped successfully!");
+        }
 
         EscrowInstruction::Cancel { .. } => {}
     }
