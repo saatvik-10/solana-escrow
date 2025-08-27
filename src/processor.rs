@@ -91,7 +91,7 @@ pub fn process_instruction(
             }
 
             //token and the amount to transfer
-            let (token_mint, expected_amount) = if is_user_a {
+            let (_token_mint, expected_amount) = if is_user_a {
                 (escrow.token_a_mint, escrow.amount_a)
             } else {
                 (escrow.token_b_mint, escrow.amount_b)
@@ -212,7 +212,95 @@ pub fn process_instruction(
             msg!("Tokens have been swapped successfully!");
         }
 
-        EscrowInstruction::Cancel { .. } => {}
+        EscrowInstruction::Cancel { .. } => {
+            let caller = &accounts[0];
+            let escrow_account = &accounts[1];
+            let vault_authority = &accounts[2];
+            let vault_token_a = &accounts[3];
+            let vault_token_b = &accounts[4];
+            let user_a_token_account = &accounts[5];
+            let user_b_token_account = &accounts[6];
+            let token_program = &accounts[7];
+
+            if !caller.is_signer {
+                return Err(EscrowError::UnauthorizedCancel.into());
+            }
+
+            let mut escrow = Escrow::try_from_slice(&escrow_account.data.borrow())?;
+
+            if caller.key != &escrow.user_a && caller.key != &escrow.user_b {
+                return Err(EscrowError::UnauthorizedCancel.into());
+            }
+
+            if !matches!(&escrow.status, EscrowStatus::Active) {
+                return Err(EscrowError::EscrowNotReady.into());
+            }
+
+            if escrow.token_a_deposited && escrow.token_b_deposited {
+                return Err(EscrowError::UnauthorizedCancel.into());
+            }
+
+            let (vault_pda, vault_bump) =
+                Pubkey::find_program_address(&[b"vault", escrow_account.key.as_ref()], program_id);
+
+            let seeds: &[&[u8]] = &[b"vault", escrow_account.key.as_ref(), &[vault_bump]];
+            let signer_seeds = &[seeds];
+
+            //refunding
+            if escrow.token_a_deposited {
+                let refund_a_ix = spl_token::instruction::transfer(
+                    token_program.key,
+                    vault_token_a.key,
+                    user_a_token_account.key,
+                    &vault_pda,
+                    &[],
+                    escrow.amount_a,
+                )?;
+
+                invoke_signed(
+                    &refund_a_ix,
+                    &[
+                        vault_token_a.clone(),
+                        user_a_token_account.clone(),
+                        vault_authority.clone(),
+                        token_program.clone(),
+                    ],
+                    signer_seeds,
+                )?;
+
+                escrow.token_a_deposited = false;
+            }
+
+            if escrow.token_b_deposited {
+                let refund_b_ix = spl_token::instruction::transfer(
+                    token_program.key,
+                    vault_token_b.key,
+                    user_b_token_account.key,
+                    &vault_pda,
+                    &[],
+                    escrow.amount_b,
+                )?;
+
+                invoke_signed(
+                    &refund_b_ix,
+                    &[
+                        vault_token_b.clone(),
+                        user_b_token_account.clone(),
+                        vault_authority.clone(),
+                        token_program.clone(),
+                    ],
+                    signer_seeds,
+                )?;
+
+                escrow.token_b_deposited = false;
+            }
+
+            escrow.status = EscrowStatus::Cancelled;
+
+            escrow.serialize(&mut &mut escrow_account.data.borrow_mut()[..])?;
+
+            msg!("Escrow cancelled! Refund has been initiated!");
+        }
     }
 
     Ok(())
