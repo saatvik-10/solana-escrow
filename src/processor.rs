@@ -3,7 +3,7 @@ use crate::instructions::{EscrowInstruction, check_rent_exempt};
 use crate::{Escrow, EscrowStatus};
 use borsh::{BorshDeserialize, BorshSerialize};
 use solana_program::{
-    account_info::AccountInfo, entrypoint::ProgramResult, program::invoke,
+    account_info::AccountInfo, entrypoint::ProgramResult, msg, program::invoke,
     program_error::ProgramError, pubkey::Pubkey,
 };
 
@@ -120,6 +120,18 @@ pub fn process_instruction(
                     token_program.clone(),
                 ],
             )?;
+
+            //updating the escrow state
+            if is_user_a {
+                escrow.token_a_deposited = true;
+            } else {
+                escrow.token_b_deposited = true;
+            }
+
+            //saving the escrow state
+            escrow.serialize(&mut &mut escrow_account.data.borrow_mut()[..])?;
+
+            msg!("Deposit successful! Amount: {}", amount);
         }
 
         EscrowInstruction::CompleteSwap { .. } => {}
