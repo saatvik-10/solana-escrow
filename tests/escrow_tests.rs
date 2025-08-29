@@ -1,4 +1,4 @@
-use borsh::{BorshDeserialize, BorshSerialize};
+use borsh::BorshDeserialize;
 use solana_escrow::{Escrow, instructions::EscrowInstruction, processor::process_instruction};
 use solana_program::{
     instruction::{AccountMeta, Instruction},
