@@ -5,7 +5,7 @@ pub mod errors;
 pub mod instructions;
 pub mod processor;
 
-#[derive(Debug, BorshSerialize, BorshDeserialize)]
+#[derive(BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq)]
 pub struct Escrow {
     pub user_a: Pubkey,
     pub user_b: Pubkey,
@@ -19,7 +19,7 @@ pub struct Escrow {
     pub status: EscrowStatus,
 }
 
-#[derive(Debug, BorshSerialize, BorshDeserialize)]
+#[derive(BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq)]
 pub enum EscrowStatus {
     Active,
     Completed,
