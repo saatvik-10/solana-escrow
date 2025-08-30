@@ -121,6 +121,9 @@ async fn test_deposit_tokens() {
     let token_a_mint = Keypair::new();
     let token_b_mint = Keypair::new();
 
+    let (vault_pda, vault_bump) =
+        Pubkey::find_program_address(&[b"vault", escrow_account.pubkey().as_ref()], &program_id);
+
     let dummy_escrow = Escrow {
         user_a: user_a.pubkey(),
         user_b: Pubkey::default(),
@@ -130,7 +133,7 @@ async fn test_deposit_tokens() {
         amount_b: 2000,
         token_a_deposited: false,
         token_b_deposited: false,
-        vault_pda: Pubkey::new_unique(),
+        vault_pda,
         status: solana_escrow::EscrowStatus::Active,
     };
 
@@ -420,4 +423,181 @@ async fn test_deposit_tokens() {
     let user_b_token_balance = TokenAccount::unpack(&user_b_ata_data.data).unwrap();
     assert_eq!(user_b_token_balance.amount, amount_b);
     println!("✅ User B received {} Token B", amount_b);
+
+    //deposit test
+    println!("Testing deposit instruction...");
+
+    println!("Creating vault A token account...");
+
+    let vault_token_a_account = spl_associated_token_account::get_associated_token_address(
+        &vault_pda,             // Owner = vault PDA
+        &token_a_mint.pubkey(), // Mint = Token A
+    );
+
+    // Create the vault's ATA
+    let create_vault_ata_ix = spl_associated_token_account::create_associated_token_account(
+        &payer.pubkey(),        // Payer
+        &vault_pda,             // Owner (the vault PDA)
+        &token_a_mint.pubkey(), // Mint
+    );
+
+    // Execute vault ATA creation
+    let create_vault_tx = Transaction::new_signed_with_payer(
+        &[create_vault_ata_ix],
+        Some(&payer.pubkey()),
+        &[&payer],
+        recent_blockhash,
+    );
+
+    banks_client
+        .process_transaction(create_vault_tx)
+        .await
+        .unwrap();
+
+    // Verify vault ATA
+    let vault_ata_account = banks_client
+        .get_account(vault_token_a_account)
+        .await
+        .unwrap()
+        .expect("Vault ATA should exist");
+
+    assert_eq!(vault_ata_account.owner, spl_token::id());
+    println!("✅ Vault token account created");
+
+    let deposit_a_ix = EscrowInstruction::Deposit { amount: (1000) };
+
+    //deposit instruction
+    let deposit_a_instruction = Instruction::new_with_borsh(
+        program_id,
+        &deposit_a_ix,
+        vec![
+            AccountMeta::new(user_a.pubkey(), true),          // depositor
+            AccountMeta::new(escrow_account.pubkey(), false), // escrow account
+            AccountMeta::new(user_a_token_account, false),    // depositor's token account
+            AccountMeta::new(vault_token_a_account, false),   // vault's token account ← FIXED!
+            AccountMeta::new_readonly(spl_token::id(), false), // token program
+        ],
+    );
+
+    //executing deposit
+    let deposit_a_tx = Transaction::new_signed_with_payer(
+        &[deposit_a_instruction],
+        Some(&payer.pubkey()),
+        &[&payer, &user_a],
+        recent_blockhash,
+    );
+
+    banks_client
+        .process_transaction(deposit_a_tx)
+        .await
+        .unwrap();
+
+    //verification
+    let escrow_after_deposit = banks_client
+        .get_account(escrow_account.pubkey())
+        .await
+        .unwrap()
+        .unwrap();
+
+    let escrow_data = Escrow::try_from_slice(&escrow_after_deposit.data).unwrap();
+    assert_eq!(escrow_data.token_a_deposited, true);
+    println!("✅ User A has deposited the tokens");
+
+    //vault balance
+    let vault_account = banks_client
+        .get_account(vault_token_a_account)
+        .await
+        .unwrap()
+        .unwrap();
+
+    let vault_balance = TokenAccount::unpack(&vault_account.data).unwrap();
+    assert_eq!(vault_balance.amount, amount_a);
+    println!("✅ Vault now holds {} Token A", amount_a);
+
+    println!("Creating vault B token account...");
+
+    let vault_token_b_account = spl_associated_token_account::get_associated_token_address(
+        &vault_pda,             // Owner = vault PDA
+        &token_b_mint.pubkey(), // Mint = Token A
+    );
+
+    // Create the vault's ATA
+    let create_vault_ata_ix = spl_associated_token_account::create_associated_token_account(
+        &payer.pubkey(),        // Payer
+        &vault_pda,             // Owner (the vault PDA)
+        &token_b_mint.pubkey(), // Mint
+    );
+
+    // Execute vault ATA creation
+    let create_vault_tx = Transaction::new_signed_with_payer(
+        &[create_vault_ata_ix],
+        Some(&payer.pubkey()),
+        &[&payer],
+        recent_blockhash,
+    );
+
+    banks_client
+        .process_transaction(create_vault_tx)
+        .await
+        .unwrap();
+
+    // Verify vault ATA
+    let vault_ata_account = banks_client
+        .get_account(vault_token_b_account)
+        .await
+        .unwrap()
+        .expect("Vault ATA should exist");
+
+    assert_eq!(vault_ata_account.owner, spl_token::id());
+    println!("✅ Vault token B account created");
+
+    let deposit_b_ix = EscrowInstruction::Deposit { amount: (2000) };
+
+    //deposit instruction
+    let deposit_b_instruction = Instruction::new_with_borsh(
+        program_id,
+        &deposit_b_ix,
+        vec![
+            AccountMeta::new(user_b.pubkey(), true),          // depositor
+            AccountMeta::new(escrow_account.pubkey(), false), // escrow account
+            AccountMeta::new(user_b_token_account, false),    // depositor's token account
+            AccountMeta::new(vault_token_b_account, false),   // vault's token account ← FIXED!
+            AccountMeta::new_readonly(spl_token::id(), false), // token program
+        ],
+    );
+
+    //executing deposit
+    let deposit_b_tx = Transaction::new_signed_with_payer(
+        &[deposit_b_instruction],
+        Some(&payer.pubkey()),
+        &[&payer, &user_b],
+        recent_blockhash,
+    );
+
+    banks_client
+        .process_transaction(deposit_b_tx)
+        .await
+        .unwrap();
+
+    //verification
+    let escrow_after_deposit = banks_client
+        .get_account(escrow_account.pubkey())
+        .await
+        .unwrap()
+        .unwrap();
+
+    let escrow_data = Escrow::try_from_slice(&escrow_after_deposit.data).unwrap();
+    assert_eq!(escrow_data.token_b_deposited, true);
+    println!("✅ User B has deposited the tokens");
+
+    //vault balance
+    let vault_account = banks_client
+        .get_account(vault_token_b_account)
+        .await
+        .unwrap()
+        .unwrap();
+
+    let vault_balance = TokenAccount::unpack(&vault_account.data).unwrap();
+    assert_eq!(vault_balance.amount, amount_b);
+    println!("✅ Vault now holds {} Token B", amount_b);
 }
