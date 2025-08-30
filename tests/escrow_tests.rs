@@ -1,3 +1,5 @@
+use std::backtrace::Backtrace;
+
 use borsh::BorshDeserialize;
 use solana_escrow::{Escrow, instructions::EscrowInstruction, processor::process_instruction};
 use solana_program::program_pack::Pack;
@@ -8,7 +10,7 @@ use solana_program::{
 use solana_program_test::*;
 use solana_program_test::*;
 use solana_sdk::{pubkey::Pubkey, signature::Keypair, signer::Signer, transaction::Transaction};
-// use spl_associated_token_account;
+use spl_associated_token_account;
 use spl_token::state::{Account as TokenAccount, Mint};
 
 // fn program_id() -> Pubkey {
@@ -117,6 +119,7 @@ async fn test_deposit_tokens() {
 
     //test accounts
     let user_a = Keypair::new();
+    let user_b = Keypair::new();
     let escrow_account = Keypair::new();
     let token_a_mint = Keypair::new();
     let token_b_mint = Keypair::new();
@@ -277,4 +280,74 @@ async fn test_deposit_tokens() {
         .expect("Token B mint should exist!");
     assert_eq!(token_b_mint_account.owner, spl_token::id());
     println!("✅ Token B mint created successfully");
+
+    println!("Creating user token accounts!");
+
+    let user_a_token_account = spl_associated_token_account::get_associated_token_address(
+        &user_a.pubkey(),
+        &token_a_mint.pubkey(),
+    );
+
+    //ata instruction
+    let create_user_a_ata_ix = spl_associated_token_account::create_associated_token_account(
+        &payer.pubkey(),
+        &user_a.pubkey(),
+        &token_a_mint.pubkey(),
+    );
+
+    //instruction
+    let create_ata_ix = Transaction::new_signed_with_payer(
+        &[create_user_a_ata_ix],
+        Some(&payer.pubkey()),
+        &[&payer],
+        recent_blockhash,
+    );
+
+    banks_client
+        .process_transaction(create_ata_ix)
+        .await
+        .unwrap();
+
+    //verifying the ata creationg
+    let user_a_ata_account = banks_client
+        .get_account(user_a_token_account)
+        .await
+        .unwrap()
+        .expect("User a ata token should exist");
+    assert_eq!(user_a_ata_account.owner, spl_token::id());
+    println!("✅ User A's ata account created successfully");
+
+    let user_b_token_account = spl_associated_token_account::get_associated_token_address(
+        &user_b.pubkey(),
+        &token_b_mint.pubkey(),
+    );
+
+    //ata instruction
+    let create_user_b_ata_ix = spl_associated_token_account::create_associated_token_account(
+        &payer.pubkey(),
+        &user_b.pubkey(),
+        &token_b_mint.pubkey(),
+    );
+
+    //instruction
+    let create_ata_ix = Transaction::new_signed_with_payer(
+        &[create_user_b_ata_ix],
+        Some(&payer.pubkey()),
+        &[&payer],
+        recent_blockhash,
+    );
+
+    banks_client
+        .process_transaction(create_ata_ix)
+        .await
+        .unwrap();
+
+    //verifying the ata creationg
+    let user_b_ata_account = banks_client
+        .get_account(user_b_token_account)
+        .await
+        .unwrap()
+        .expect("User b ata token should exist");
+    assert_eq!(user_b_ata_account.owner, spl_token::id());
+    println!("✅ User B's ata account created successfully");
 }
