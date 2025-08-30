@@ -68,9 +68,13 @@ pub fn process_instruction(
                 return Err(EscrowError::UnauthorizedCancel.into());
             }
 
-            //checking if user_a depositing of user_b
             let is_user_a = depositor_account.key == &escrow.user_a;
-            let is_user_b = depositor_account.key == &escrow.user_b;
+            let is_user_b = if escrow.user_b == Pubkey::default() {
+                msg!("First user_b deposit - allowing non-user_a");
+                !is_user_a
+            } else {
+                depositor_account.key == &escrow.user_b
+            };
 
             if !is_user_a && !is_user_b {
                 return Err(EscrowError::UnauthorizedCancel.into());
