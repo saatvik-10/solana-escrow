@@ -1,5 +1,3 @@
-use std::backtrace::Backtrace;
-
 use borsh::BorshDeserialize;
 use solana_escrow::{Escrow, instructions::EscrowInstruction, processor::process_instruction};
 use solana_program::program_pack::Pack;
@@ -7,7 +5,6 @@ use solana_program::{
     instruction::{AccountMeta, Instruction},
     system_instruction,
 };
-use solana_program_test::*;
 use solana_program_test::*;
 use solana_sdk::{pubkey::Pubkey, signature::Keypair, signer::Signer, transaction::Transaction};
 use spl_associated_token_account;
@@ -350,4 +347,77 @@ async fn test_deposit_tokens() {
         .expect("User b ata token should exist");
     assert_eq!(user_b_ata_account.owner, spl_token::id());
     println!("✅ User B's ata account created successfully");
+
+    //minting tokens to users
+    println!("Minting tokens to users...");
+
+    //to user_a
+    let mint_to_user_a = spl_token::instruction::mint_to(
+        &spl_token::id(),
+        &token_a_mint.pubkey(),
+        &&user_a_token_account,
+        &payer.pubkey(),
+        &[],
+        amount_a,
+    )
+    .unwrap();
+
+    //executing
+    let mint_to_user_a_tx = Transaction::new_signed_with_payer(
+        &[mint_to_user_a],
+        Some(&payer.pubkey()),
+        &[&payer],
+        recent_blockhash,
+    );
+
+    banks_client
+        .process_transaction(mint_to_user_a_tx)
+        .await
+        .unwrap();
+
+    //verification
+    let user_a_ata_data = banks_client
+        .get_account(user_a_token_account)
+        .await
+        .unwrap()
+        .unwrap();
+
+    let user_a_token_balance = TokenAccount::unpack(&user_a_ata_data.data).unwrap();
+    assert_eq!(user_a_token_balance.amount, amount_a);
+    println!("✅ User A received {} Token A", amount_a);
+
+    //to user_b
+    let mint_to_user_b = spl_token::instruction::mint_to(
+        &spl_token::id(),
+        &token_b_mint.pubkey(),
+        &&user_b_token_account,
+        &payer.pubkey(),
+        &[],
+        amount_b,
+    )
+    .unwrap();
+
+    //executing
+    let mint_to_user_b_tx = Transaction::new_signed_with_payer(
+        &[mint_to_user_b],
+        Some(&payer.pubkey()),
+        &[&payer],
+        recent_blockhash,
+    );
+
+    banks_client
+        .process_transaction(mint_to_user_b_tx)
+        .await
+        .unwrap();
+
+    //verification
+    let user_b_ata_data = banks_client
+        .get_account(user_b_token_account)
+        .await
+        .unwrap()
+        .unwrap();
+
+    let user_b_token_balance = TokenAccount::unpack(&user_b_ata_data.data).unwrap();
+    assert_eq!(user_b_token_balance.amount, amount_b);
+    println!("✅ User B received {} Token B", amount_b);
 }
