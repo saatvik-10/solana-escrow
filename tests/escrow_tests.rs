@@ -390,7 +390,7 @@ async fn test_deposit_tokens() {
     let mint_to_user_b = spl_token::instruction::mint_to(
         &spl_token::id(),
         &token_b_mint.pubkey(),
-        &&user_b_token_account,
+        &user_b_token_account,
         &payer.pubkey(),
         &[],
         amount_b,
