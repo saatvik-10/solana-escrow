@@ -1,3 +1,5 @@
+use std::vec;
+
 use borsh::BorshDeserialize;
 use solana_escrow::{Escrow, instructions::EscrowInstruction, processor::process_instruction};
 use solana_program::program_pack::Pack;
@@ -600,4 +602,38 @@ async fn test_deposit_tokens() {
     let vault_balance = TokenAccount::unpack(&vault_account.data).unwrap();
     assert_eq!(vault_balance.amount, amount_b);
     println!("✅ Vault now holds {} Token B", amount_b);
+
+    //completing the swap btw the 2 accounts
+    println!("Testing Complete Swap...");
+
+    let complete_swap_ix = EscrowInstruction::CompleteSwap;
+
+    //solana instruction for completion
+    let complete_swap_instruction = Instruction::new_with_borsh(
+        program_id,
+        &complete_swap_ix,
+        vec![
+            AccountMeta::new(user_a.pubkey(), true),
+            AccountMeta::new(escrow_account.pubkey(), false),
+            AccountMeta::new(vault_pda, false),
+            AccountMeta::new(vault_token_a_account, false),
+            AccountMeta::new(vault_token_b_account, false),
+            AccountMeta::new(user_a_token_account, false),
+            AccountMeta::new(user_b_token_account, false),
+            AccountMeta::new_readonly(spl_token::id(), false),
+        ],
+    );
+
+    //execution
+    let complete_swap_tx = Transaction::new_signed_with_payer(
+        &[complete_swap_instruction],
+        Some(&payer.pubkey()),
+        &[&payer, &user_a],
+        recent_blockhash,
+    );
+
+    banks_client
+        .process_transaction(complete_swap_tx)
+        .await
+        .unwrap();
 }
