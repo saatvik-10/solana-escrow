@@ -1,6 +1,7 @@
 use std::vec;
 
 use borsh::BorshDeserialize;
+use solana_escrow::EscrowStatus;
 use solana_escrow::{Escrow, instructions::EscrowInstruction, processor::process_instruction};
 use solana_program::program_pack::Pack;
 use solana_program::{
@@ -604,6 +605,54 @@ async fn test_deposit_tokens() {
     println!("✅ Vault now holds {} Token B", amount_b);
 
     //completing the swap btw the 2 accounts
+    let user_a_token_b_account = spl_associated_token_account::get_associated_token_address(
+        &user_a.pubkey(),
+        &token_b_mint.pubkey(),
+    );
+
+    let create_user_a_token_b_ata_ix =
+        spl_associated_token_account::create_associated_token_account(
+            &payer.pubkey(),
+            &user_a.pubkey(),
+            &token_b_mint.pubkey(),
+        );
+
+    let create_user_a_token_b_tx = Transaction::new_signed_with_payer(
+        &[create_user_a_token_b_ata_ix],
+        Some(&payer.pubkey()),
+        &[&payer],
+        recent_blockhash,
+    );
+
+    banks_client
+        .process_transaction(create_user_a_token_b_tx)
+        .await
+        .unwrap();
+
+    let user_b_token_a_account = spl_associated_token_account::get_associated_token_address(
+        &user_b.pubkey(),
+        &token_a_mint.pubkey(),
+    );
+
+    let create_user_b_token_a_ata_ix =
+        spl_associated_token_account::create_associated_token_account(
+            &payer.pubkey(),
+            &user_b.pubkey(),
+            &token_a_mint.pubkey(),
+        );
+
+    let create_user_b_token_a_tx = Transaction::new_signed_with_payer(
+        &[create_user_b_token_a_ata_ix],
+        Some(&payer.pubkey()),
+        &[&payer],
+        recent_blockhash,
+    );
+
+    banks_client
+        .process_transaction(create_user_b_token_a_tx)
+        .await
+        .unwrap();
+
     println!("Testing Complete Swap...");
 
     let complete_swap_ix = EscrowInstruction::CompleteSwap;
@@ -618,8 +667,8 @@ async fn test_deposit_tokens() {
             AccountMeta::new(vault_pda, false),
             AccountMeta::new(vault_token_a_account, false),
             AccountMeta::new(vault_token_b_account, false),
-            AccountMeta::new(user_a_token_account, false),
-            AccountMeta::new(user_b_token_account, false),
+            AccountMeta::new(user_a_token_b_account, false),
+            AccountMeta::new(user_b_token_a_account, false),
             AccountMeta::new_readonly(spl_token::id(), false),
         ],
     );
@@ -636,4 +685,78 @@ async fn test_deposit_tokens() {
         .process_transaction(complete_swap_tx)
         .await
         .unwrap();
+
+    //user_a token_a_account should be 0
+    let user_a_token_a_data = banks_client
+        .get_account(user_a_token_account)
+        .await
+        .unwrap()
+        .unwrap();
+
+    let user_a_token_a_balance = TokenAccount::unpack(&user_a_token_a_data.data).unwrap();
+
+    assert_eq!(user_a_token_a_balance.amount, 0);
+
+    //user_a token_b_account = amount_b
+    let user_a_token_b_data = banks_client
+        .get_account(user_a_token_b_account)
+        .await
+        .unwrap()
+        .unwrap();
+
+    let user_a_token_b_balance = TokenAccount::unpack(&user_a_token_b_data.data).unwrap();
+
+    assert_eq!(user_a_token_b_balance.amount, amount_b);
+
+    // User B Token B should be 0
+    let user_b_token_b_data = banks_client
+        .get_account(user_b_token_account)
+        .await
+        .unwrap()
+        .unwrap();
+
+    let user_b_token_b_balance = TokenAccount::unpack(&user_b_token_b_data.data).unwrap();
+
+    assert_eq!(user_b_token_b_balance.amount, 0);
+
+    // User B Token A should be amount_a
+    let user_b_token_a_data = banks_client
+        .get_account(user_b_token_a_account)
+        .await
+        .unwrap()
+        .unwrap();
+
+    let user_b_token_a_balance = TokenAccount::unpack(&user_b_token_a_data.data).unwrap();
+
+    assert_eq!(user_b_token_a_balance.amount, amount_a);
+
+    //vaults should be empty
+    let vault_a_data = banks_client
+        .get_account(vault_token_a_account)
+        .await
+        .unwrap()
+        .unwrap();
+    let vault_a_balance = TokenAccount::unpack(&vault_a_data.data).unwrap();
+    assert_eq!(vault_a_balance.amount, 0);
+
+    let vault_b_data = banks_client
+        .get_account(vault_token_b_account)
+        .await
+        .unwrap()
+        .unwrap();
+    let vault_b_balance = TokenAccount::unpack(&vault_b_data.data).unwrap();
+    assert_eq!(vault_b_balance.amount, 0);
+
+    //escrow final status after swap
+    let final_escrow_status = banks_client
+        .get_account(escrow_account.pubkey())
+        .await
+        .unwrap()
+        .unwrap();
+
+    let final_escrow = Escrow::try_from_slice(&final_escrow_status.data).unwrap();
+
+    matches!(final_escrow.status, EscrowStatus::Completed);
+
+    println!("✅ CompleteSwap verified");
 }
