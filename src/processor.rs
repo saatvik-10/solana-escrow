@@ -145,8 +145,8 @@ pub fn process_instruction(
             let vault_authority = &accounts[2];
             let vault_token_a = &accounts[3];
             let vault_token_b = &accounts[4];
-            let user_a_token_account = &accounts[5];
-            let user_b_token_account = &accounts[6];
+            let user_a_token_b_account = &accounts[5];
+            let user_b_token_a_account = &accounts[6];
             let token_program = &accounts[7];
 
             if !caller.is_signer {
@@ -169,7 +169,7 @@ pub fn process_instruction(
             let transfer_a_ix = spl_token::instruction::transfer(
                 token_program.key,
                 vault_token_a.key,
-                user_a_token_account.key,
+                user_b_token_a_account.key,
                 &vault_pda,
                 &[],
                 escrow.amount_a,
@@ -178,7 +178,7 @@ pub fn process_instruction(
             let transfer_b_ix = spl_token::instruction::transfer(
                 token_program.key,
                 vault_token_b.key,
-                user_b_token_account.key,
+                user_a_token_b_account.key,
                 &vault_pda,
                 &[],
                 escrow.amount_b,
@@ -191,7 +191,7 @@ pub fn process_instruction(
                 &transfer_a_ix,
                 &[
                     vault_token_a.clone(),
-                    user_a_token_account.clone(),
+                    user_b_token_a_account.clone(),
                     vault_authority.clone(),
                     token_program.clone(),
                 ],
@@ -202,7 +202,7 @@ pub fn process_instruction(
                 &transfer_b_ix,
                 &[
                     vault_token_b.clone(),
-                    user_b_token_account.clone(),
+                    user_a_token_b_account.clone(),
                     vault_authority.clone(),
                     token_program.clone(),
                 ],
