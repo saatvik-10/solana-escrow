@@ -759,4 +759,265 @@ async fn test_deposit_tokens() {
     matches!(final_escrow.status, EscrowStatus::Completed);
 
     println!("✅ CompleteSwap verified");
+
+    //cancel instruction test
+    println!("Testing cancel Escrow instruction...");
+
+    let cancel_escrow_account = Keypair::new();
+    let cancel_vault_pda = Pubkey::find_program_address(
+        &[b"vault", cancel_escrow_account.pubkey().as_ref()],
+        &program_id,
+    );
+
+    //init escrow
+    let cancel_init_ix = EscrowInstruction::InitEscrow {
+        token_a_mint: token_a_mint.pubkey(),
+        token_b_mint: token_b_mint.pubkey(),
+        amount_a: 500,
+        amount_b: 1000,
+    };
+
+    let cancel_dummy_escrow = Escrow {
+        user_a: user_a.pubkey(),
+        user_b: Pubkey::default(),
+        token_a_mint: token_a_mint.pubkey(),
+        token_b_mint: token_b_mint.pubkey(),
+        amount_a: 500,
+        amount_b: 1000,
+        token_a_deposited: false,
+        token_b_deposited: false,
+        vault_pda: cancel_vault_pda.0, // Use the new vault PDA
+        status: solana_escrow::EscrowStatus::Active,
+    };
+
+    //on chain escrow
+    let cancel_escrow_size = borsh::to_vec(&cancel_dummy_escrow).unwrap().len() as u64;
+    let cancel_escrow_rent = rent.minimum_balance(cancel_escrow_size as usize);
+
+    let create_cancel_escrow_ix = system_instruction::create_account(
+        &payer.pubkey(),
+        &cancel_escrow_account.pubkey(),
+        cancel_escrow_rent,
+        cancel_escrow_size,
+        &program_id,
+    );
+
+    //initializing escrow instruction
+    let cancel_init_instruction = Instruction::new_with_borsh(
+        program_id,
+        &cancel_init_ix,
+        vec![
+            AccountMeta::new(user_a.pubkey(), true),
+            AccountMeta::new(cancel_escrow_account.pubkey(), false),
+            AccountMeta::new_readonly(solana_program::sysvar::rent::id(), false),
+        ],
+    );
+
+    //execution
+    let cancel_init_tx = Transaction::new_signed_with_payer(
+        &[create_cancel_escrow_ix, cancel_init_instruction],
+        Some(&payer.pubkey()),
+        &[&payer, &user_a, &cancel_escrow_account],
+        recent_blockhash,
+    );
+
+    banks_client
+        .process_transaction(cancel_init_tx)
+        .await
+        .unwrap();
+
+    //verifying the creation
+    let cancel_escrow_data = banks_client
+        .get_account(cancel_escrow_account.pubkey())
+        .await
+        .unwrap()
+        .unwrap();
+
+    let cancel_escrow = Escrow::try_from_slice(&cancel_escrow_data.data).unwrap();
+
+    assert_eq!(cancel_escrow.user_a, user_a.pubkey());
+    assert_eq!(cancel_escrow.amount_a, 500);
+    matches!(cancel_escrow.status, solana_escrow::EscrowStatus::Active);
+    println!("✅ New escrow created for cancel testing");
+
+    // --- Deposit one token for cancel test ---
+    // Create vault ATA for cancel escrow
+    // Vault Token A ATA
+    let cancel_vault_token_a_account = spl_associated_token_account::get_associated_token_address(
+        &cancel_vault_pda.0,
+        &token_a_mint.pubkey(),
+    );
+
+    let create_cancel_vault_a_ata_ix =
+        spl_associated_token_account::create_associated_token_account(
+            &payer.pubkey(),
+            &cancel_vault_pda.0,
+            &token_a_mint.pubkey(),
+        );
+
+    // Vault Token B ATA
+    let cancel_vault_token_b_account = spl_associated_token_account::get_associated_token_address(
+        &cancel_vault_pda.0,
+        &token_b_mint.pubkey(),
+    );
+
+    let create_cancel_vault_b_ata_ix =
+        spl_associated_token_account::create_associated_token_account(
+            &payer.pubkey(),
+            &cancel_vault_pda.0,
+            &token_b_mint.pubkey(),
+        );
+
+    // Create both vault ATAs
+    let create_cancel_vault_tx = Transaction::new_signed_with_payer(
+        &[create_cancel_vault_a_ata_ix, create_cancel_vault_b_ata_ix],
+        Some(&payer.pubkey()),
+        &[&payer],
+        recent_blockhash,
+    );
+
+    banks_client
+        .process_transaction(create_cancel_vault_tx)
+        .await
+        .unwrap();
+
+    // --- Mint more tokens to User A for cancel test ---
+    println!("Minting additional tokens to User A for cancel test...");
+
+    let mint_more_to_user_a = spl_token::instruction::mint_to(
+        &spl_token::id(),
+        &token_a_mint.pubkey(),
+        &user_a_token_account,
+        &payer.pubkey(),
+        &[],
+        500, // Mint 500 more Token A
+    )
+    .unwrap();
+
+    let mint_more_tx = Transaction::new_signed_with_payer(
+        &[mint_more_to_user_a],
+        Some(&payer.pubkey()),
+        &[&payer],
+        recent_blockhash,
+    );
+
+    banks_client
+        .process_transaction(mint_more_tx)
+        .await
+        .unwrap();
+
+    // Verify User A now has 500 Token A
+    let user_a_before_cancel = banks_client
+        .get_account(user_a_token_account)
+        .await
+        .unwrap()
+        .unwrap();
+
+    let user_a_balance_before = TokenAccount::unpack(&user_a_before_cancel.data).unwrap();
+    assert_eq!(user_a_balance_before.amount, 500);
+    println!(
+        "✅ User A now has {} Token A for cancel test",
+        user_a_balance_before.amount
+    );
+
+    // Deposit Token A from User A
+    let cancel_deposit_ix = EscrowInstruction::Deposit { amount: 500 };
+    let cancel_deposit_instruction = Instruction::new_with_borsh(
+        program_id,
+        &cancel_deposit_ix,
+        vec![
+            AccountMeta::new(user_a.pubkey(), true),
+            AccountMeta::new(cancel_escrow_account.pubkey(), false),
+            AccountMeta::new(user_a_token_account, false), // User's Token A ATA
+            AccountMeta::new(cancel_vault_token_a_account, false), // Vault's Token A ATA
+            AccountMeta::new_readonly(spl_token::id(), false),
+        ],
+    );
+
+    let cancel_deposit_tx = Transaction::new_signed_with_payer(
+        &[cancel_deposit_instruction],
+        Some(&payer.pubkey()),
+        &[&payer, &user_a],
+        recent_blockhash,
+    );
+
+    banks_client
+        .process_transaction(cancel_deposit_tx)
+        .await
+        .unwrap();
+
+    // Verify deposit
+    let cancel_escrow_after_deposit = banks_client
+        .get_account(cancel_escrow_account.pubkey())
+        .await
+        .unwrap()
+        .unwrap();
+
+    let cancel_escrow_data = Escrow::try_from_slice(&cancel_escrow_after_deposit.data).unwrap();
+    assert_eq!(cancel_escrow_data.token_a_deposited, true);
+    assert_eq!(cancel_escrow_data.token_b_deposited, false); // Only one deposited
+    println!("✅ One token deposited for cancel test");
+
+    // --- Call Cancel instruction ---
+    // Note: Cancel requires 8 accounts (same as CompleteSwap)
+    let cancel_ix = EscrowInstruction::Cancel;
+    let cancel_instruction = Instruction::new_with_borsh(
+        program_id,
+        &cancel_ix,
+        vec![
+            AccountMeta::new(user_a.pubkey(), true),
+            AccountMeta::new(cancel_escrow_account.pubkey(), false),
+            AccountMeta::new(cancel_vault_pda.0, false),
+            AccountMeta::new(cancel_vault_token_a_account, false), // Vault Token A
+            AccountMeta::new(cancel_vault_token_b_account, false), // Vault Token B ✅ Now separate!
+            AccountMeta::new(user_a_token_account, false),
+            AccountMeta::new(user_b_token_account, false),
+            AccountMeta::new_readonly(spl_token::id(), false),
+        ],
+    );
+
+    let cancel_tx = Transaction::new_signed_with_payer(
+        &[cancel_instruction],
+        Some(&payer.pubkey()),
+        &[&payer, &user_a], // Caller must sign
+        recent_blockhash,
+    );
+
+    banks_client.process_transaction(cancel_tx).await.unwrap();
+    println!("✅ Cancel instruction executed");
+
+    // --- Verify refunds and status ---
+    // User A should get their 500 Token A back
+    let user_a_after_cancel = banks_client
+        .get_account(user_a_token_account)
+        .await
+        .unwrap()
+        .unwrap();
+
+    let user_a_balance = TokenAccount::unpack(&user_a_after_cancel.data).unwrap();
+    assert_eq!(user_a_balance.amount, 500); // Refunded
+
+    // Vault should be empty
+    let vault_after_cancel = banks_client
+        .get_account(cancel_vault_token_a_account)
+        .await
+        .unwrap()
+        .unwrap();
+
+    let vault_balance = TokenAccount::unpack(&vault_after_cancel.data).unwrap();
+    assert_eq!(vault_balance.amount, 0);
+
+    // Escrow status should be Cancelled
+    let final_cancel_escrow = banks_client
+        .get_account(cancel_escrow_account.pubkey())
+        .await
+        .unwrap()
+        .unwrap();
+
+    let final_cancel_data = Escrow::try_from_slice(&final_cancel_escrow.data).unwrap();
+    matches!(
+        final_cancel_data.status,
+        solana_escrow::EscrowStatus::Cancelled
+    );
+    println!("✅ Cancel verified - refunds processed and status updated");
 }
