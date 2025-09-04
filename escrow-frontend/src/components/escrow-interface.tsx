@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { PublicKey } from '@solana/web3.js';
 import { useWallet } from '@solana/wallet-adapter-react';
 import {
   EscrowData,
@@ -43,9 +44,12 @@ import {
   DollarSign,
   X,
 } from 'lucide-react';
+import { initializeEscrow } from '@/helpers/client';
+import { connection } from '@/helpers/connection';
+import { parseTokenAmount, getTokenDecimals } from '@/helpers/ata';
 
 export function EscrowInterface() {
-  const { publicKey, connected } = useWallet();
+  const { publicKey, connected, signTransaction } = useWallet();
 
   // form instances
   const initializeForm = useForm<InitializeEscrow>({
@@ -96,28 +100,47 @@ export function EscrowInterface() {
 
   const onInitialize = async (data: InitializeEscrow) => {
     setErr(null);
+    setSuccess(null);
     setIsInitializing(true);
 
     try {
-      const initializerAmount = BigInt(data.initializerAmount.trim());
-      const receiverAmount = BigInt(data.receiverAmount.trim());
-
-      if (initializerAmount <= 0 || receiverAmount <= 0) {
-        toast.error('Enter a valid amount');
+      if (!connected || !publicKey) {
+        toast.error('Please connect your wallet first');
       }
 
-      console.log('Init Payload', {
-        initializerToken: data.initializerTokenMint,
-        receiverToken: data.receiverTokenMint,
-        initializerAmount: data.initializerAmount,
-        receiverAmount: data.receiverAmount,
+      const tokenAMint = new PublicKey(data.initializerTokenMint);
+      const tokenBMint = new PublicKey(data.receiverTokenMint);
+
+      const tokenADecimals = await getTokenDecimals(connection, tokenAMint);
+      const tokenBDecimals = await getTokenDecimals(connection, tokenBMint);
+
+      //raw inputs
+      const amountA = parseTokenAmount(
+        data.initializerAmount.trim(),
+        tokenADecimals
+      );
+      const amountB = parseTokenAmount(
+        data.receiverAmount.trim(),
+        tokenBDecimals
+      );
+
+      if (amountA <= 0 || amountB <= 0) {
+        toast.error('Please enter valid amount');
+      }
+
+      const wallet = { publicKey, signTransaction };
+      const res = await initializeEscrow({
+        connection,
+        userWallet: wallet,
+        tokenAMint,
+        tokenBMint,
+        amountA,
+        amountB,
       });
 
-      //sending transaction later
-
+      setSuccess(`Escrow created! TX: ${res.txId.slice(0, 8)}...`);
       initializeForm.reset();
-
-      setSuccess('Init Payload ready!');
+      toast.success('Escrow initialized successfully!');
     } catch (err: any) {
       setErr(err?.message);
       toast.error(err);
