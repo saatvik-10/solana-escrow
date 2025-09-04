@@ -21,37 +21,41 @@ export function EscrowInterface() {
   const { publicKey, connected } = useWallet();
 
   //initialization form states
-  const initializeForm = useForm<InitializeEscrow>({
-    resolver: zodResolver(InitializeEscrowSchema),
-    defaultValues: {
-      initializerTokenMint: '',
-      receiverTokenMint: '',
-      initializerAmount: '',
-      receiverAmount: '',
-    },
-  });
-
-  const depositForm = useForm<DepositEscrow>({
-    resolver: zodResolver(DepositEscrowSchema),
-    defaultValues: {
-      escrowAccount: '',
-      depositAmount: '',
-    },
-  });
-
   const {
     register: initializeRegister,
     handleSubmit: initializeHandleSubmit,
     formState: { errors: initializeErrors },
     reset: initializeReset,
-  } = initializeForm;
+  } = useForm<InitializeEscrow>({
+    resolver: zodResolver(InitializeEscrowSchema),
+  });
 
   const {
     register: depositRegister,
     handleSubmit: depositHandleSubmit,
     formState: { errors: depositErrors },
     reset: depositReset,
-  } = depositForm;
+  } = useForm<DepositEscrow>({
+    resolver: zodResolver(DepositEscrowSchema),
+  });
+
+  const {
+    register: completeRegister,
+    handleSubmit: completeHandleSubmit,
+    formState: { errors: completeErrors },
+    reset: completeReset,
+  } = useForm<CompletedEscrow>({
+    resolver: zodResolver(CompletedEscrowSchema),
+  });
+
+  const {
+    register: cancelRegister,
+    handleSubmit: cancelHandleSubmit,
+    formState: { errors: cancelErrors },
+    reset: cancelReset,
+  } = useForm<CancelledEscrow>({
+    resolver: zodResolver(CancelledEscrowSchema),
+  });
 
   //operations
   const [escrowAmount, setEscrowAccount] = useState<string>('');
