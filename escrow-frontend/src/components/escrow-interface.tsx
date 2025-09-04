@@ -26,6 +26,23 @@ import {
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Badge } from '@/components/ui/badge';
+import {
+  CheckCircle,
+  AlertCircle,
+  Wallet,
+  ArrowRightLeft,
+  DollarSign,
+  X,
+} from 'lucide-react';
 
 export function EscrowInterface() {
   const { publicKey, connected } = useWallet();
@@ -189,172 +206,347 @@ export function EscrowInterface() {
   };
 
   return (
-    <div>
-      <h1>Escrow Interface</h1>
+    <div className='min-h-screen bg-slate-50 p-6'>
+      <div className='mx-auto max-w-6xl space-y-8'>
+        {/* Header */}
+        <div className='text-center space-y-4'>
+          <h1 className='text-4xl font-bold tracking-tight text-slate-900'>
+            Solana Escrow
+          </h1>
+          <p className='text-lg text-slate-600 max-w-2xl mx-auto'>
+            Secure token swaps with trustless escrow on Solana blockchain
+          </p>
 
-      {/* init form */}
-      <Form {...initializeForm}>
-        <form
-          onSubmit={initializeForm.handleSubmit(onInitialize)}
-          className='space-y-4'
-        >
-          <FormField
-            control={initializeForm.control}
-            name='initializerTokenMint'
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Initializer Token Mint</FormLabel>
-                <FormControl>
-                  <Input {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
+          {/* Wallet Status */}
+          <div className='flex items-center justify-center gap-2'>
+            <Wallet className='h-4 w-4' />
+            {connected ? (
+              <Badge
+                variant='default'
+                className='bg-green-100 text-green-800 border-green-200'
+              >
+                Wallet Connected
+              </Badge>
+            ) : (
+              <Badge
+                variant='secondary'
+                className='bg-yellow-100 text-yellow-800 border-yellow-200'
+              >
+                Connect Wallet
+              </Badge>
             )}
-          />
+          </div>
+        </div>
 
-          <FormField
-            control={initializeForm.control}
-            name='receiverTokenMint'
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Receiver Token Mint</FormLabel>
-                <FormControl>
-                  <Input {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+        {/* Status Messages */}
+        {err && (
+          <Alert className='border-red-200 bg-red-50'>
+            <AlertCircle className='h-4 w-4 text-red-600' />
+            <AlertDescription className='text-red-800'>{err}</AlertDescription>
+          </Alert>
+        )}
 
-          <FormField
-            control={initializeForm.control}
-            name='initializerAmount'
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Initializer Amount</FormLabel>
-                <FormControl>
-                  <Input {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+        {success && (
+          <Alert className='border-green-200 bg-green-50'>
+            <CheckCircle className='h-4 w-4 text-green-600' />
+            <AlertDescription className='text-green-800'>
+              {success}
+            </AlertDescription>
+          </Alert>
+        )}
 
-          <FormField
-            control={initializeForm.control}
-            name='receiverAmount'
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Receiver Amount</FormLabel>
-                <FormControl>
-                  <Input {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+        {/* Forms Grid */}
+        <div className='grid grid-cols-1 lg:grid-cols-2 gap-8'>
+          {/* Initialize Escrow Card */}
+          <Card className='shadow-sm border-slate-200'>
+            <CardHeader className='space-y-2'>
+              <div className='flex items-center gap-2'>
+                <ArrowRightLeft className='h-5 w-5 text-blue-600' />
+                <CardTitle className='text-xl text-slate-900'>
+                  Initialize Escrow
+                </CardTitle>
+              </div>
+              <CardDescription className='text-slate-600'>
+                Create a new escrow for token swapping
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Form {...initializeForm}>
+                <form
+                  onSubmit={initializeForm.handleSubmit(onInitialize)}
+                  className='space-y-4'
+                >
+                  <FormField
+                    control={initializeForm.control}
+                    name='initializerTokenMint'
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className='text-slate-700'>
+                          Your Token Mint
+                        </FormLabel>
+                        <FormControl>
+                          <Input
+                            {...field}
+                            placeholder='Enter token mint address...'
+                            className='border-slate-200 focus:border-blue-500'
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
 
-          <Button type='submit' disabled={isInitializing}>
-            {isInitializing ? 'Initializing…' : 'Initialize Escrow'}
-          </Button>
-        </form>
-      </Form>
+                  <FormField
+                    control={initializeForm.control}
+                    name='receiverTokenMint'
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className='text-slate-700'>
+                          Desired Token Mint
+                        </FormLabel>
+                        <FormControl>
+                          <Input
+                            {...field}
+                            placeholder='Enter token mint address...'
+                            className='border-slate-200 focus:border-blue-500'
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
 
-      {/* deposit form */}
-      <Form {...depositForm}>
-        <form
-          onSubmit={depositForm.handleSubmit(onDeposit)}
-          className='space-y-4'
-        >
-          <FormField
-            control={depositForm.control}
-            name='escrowAccount'
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Escrow Account (pubkey)</FormLabel>
-                <FormControl>
-                  <Input {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+                  <div className='grid grid-cols-2 gap-4'>
+                    <FormField
+                      control={initializeForm.control}
+                      name='initializerAmount'
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className='text-slate-700'>
+                            Your Amount
+                          </FormLabel>
+                          <FormControl>
+                            <Input
+                              {...field}
+                              placeholder='0.00'
+                              className='border-slate-200 focus:border-blue-500'
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
 
-          <FormField
-            control={depositForm.control}
-            name='depositAmount'
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Deposit Amount</FormLabel>
-                <FormControl>
-                  <Input {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+                    <FormField
+                      control={initializeForm.control}
+                      name='receiverAmount'
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className='text-slate-700'>
+                            Desired Amount
+                          </FormLabel>
+                          <FormControl>
+                            <Input
+                              {...field}
+                              placeholder='0.00'
+                              className='border-slate-200 focus:border-blue-500'
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
 
-          <Button type='submit' disabled={isDepositing}>
-            {isDepositing ? 'Depositing…' : 'Deposit'}
-          </Button>
-        </form>
-      </Form>
+                  <Button
+                    type='submit'
+                    disabled={isInitializing || !connected}
+                    className='w-full bg-blue-600 hover:bg-blue-700 text-white'
+                  >
+                    {isInitializing
+                      ? 'Creating Escrow...'
+                      : 'Initialize Escrow'}
+                  </Button>
+                </form>
+              </Form>
+            </CardContent>
+          </Card>
 
-      {/* completion form */}
-      <Form {...completeForm}>
-        <form
-          onSubmit={completeForm.handleSubmit(onComplete)}
-          className='space-y-4'
-        >
-          <FormField
-            control={completeForm.control}
-            name='escrowAccount'
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Escrow Account (to complete)</FormLabel>
-                <FormControl>
-                  <Input {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+          {/* Deposit Card */}
+          <Card className='shadow-sm border-slate-200'>
+            <CardHeader className='space-y-2'>
+              <div className='flex items-center gap-2'>
+                <DollarSign className='h-5 w-5 text-green-600' />
+                <CardTitle className='text-xl text-slate-900'>
+                  Deposit Tokens
+                </CardTitle>
+              </div>
+              <CardDescription className='text-slate-600'>
+                Deposit tokens into an existing escrow
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Form {...depositForm}>
+                <form
+                  onSubmit={depositForm.handleSubmit(onDeposit)}
+                  className='space-y-4'
+                >
+                  <FormField
+                    control={depositForm.control}
+                    name='escrowAccount'
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className='text-slate-700'>
+                          Escrow Account
+                        </FormLabel>
+                        <FormControl>
+                          <Input
+                            {...field}
+                            placeholder='Enter escrow account address...'
+                            className='border-slate-200 focus:border-green-500'
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
 
-          <Button type='submit' disabled={isCompleting || !connected}>
-            {isCompleting ? 'Completing…' : 'Complete Swap'}
-          </Button>
-        </form>
-      </Form>
+                  <FormField
+                    control={depositForm.control}
+                    name='depositAmount'
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className='text-slate-700'>
+                          Deposit Amount
+                        </FormLabel>
+                        <FormControl>
+                          <Input
+                            {...field}
+                            placeholder='0.00'
+                            className='border-slate-200 focus:border-green-500'
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
 
-      {/* cancellation form */}
-      <Form {...cancelForm}>
-        <form
-          onSubmit={cancelForm.handleSubmit(onCancel)}
-          className='space-y-4'
-        >
-          <FormField
-            control={cancelForm.control}
-            name='escrowAccount'
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Escrow Account (to cancel)</FormLabel>
-                <FormControl>
-                  <Input {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+                  <Button
+                    type='submit'
+                    disabled={isDepositing || !connected}
+                    className='w-full bg-green-600 hover:bg-green-700 text-white'
+                  >
+                    {isDepositing ? 'Depositing...' : 'Deposit Tokens'}
+                  </Button>
+                </form>
+              </Form>
+            </CardContent>
+          </Card>
 
-          <Button
-            type='submit'
-            variant='destructive'
-            disabled={isCancelling || !connected}
-          >
-            {isCancelling ? 'Cancelling…' : 'Cancel Escrow'}
-          </Button>
-        </form>
-      </Form>
+          {/* Complete Swap Card */}
+          <Card className='shadow-sm border-slate-200'>
+            <CardHeader className='space-y-2'>
+              <div className='flex items-center gap-2'>
+                <CheckCircle className='h-5 w-5 text-purple-600' />
+                <CardTitle className='text-xl text-slate-900'>
+                  Complete Swap
+                </CardTitle>
+              </div>
+              <CardDescription className='text-slate-600'>
+                Finalize an escrow swap transaction
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Form {...completeForm}>
+                <form
+                  onSubmit={completeForm.handleSubmit(onComplete)}
+                  className='space-y-4'
+                >
+                  <FormField
+                    control={completeForm.control}
+                    name='escrowAccount'
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className='text-slate-700'>
+                          Escrow Account
+                        </FormLabel>
+                        <FormControl>
+                          <Input
+                            {...field}
+                            placeholder='Enter escrow account address...'
+                            className='border-slate-200 focus:border-purple-500'
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <Button
+                    type='submit'
+                    disabled={isCompleting || !connected}
+                    className='w-full bg-purple-600 hover:bg-purple-700 text-white'
+                  >
+                    {isCompleting ? 'Completing...' : 'Complete Swap'}
+                  </Button>
+                </form>
+              </Form>
+            </CardContent>
+          </Card>
+
+          {/* Cancel Escrow Card */}
+          <Card className='shadow-sm border-slate-200'>
+            <CardHeader className='space-y-2'>
+              <div className='flex items-center gap-2'>
+                <X className='h-5 w-5 text-red-600' />
+                <CardTitle className='text-xl text-slate-900'>
+                  Cancel Escrow
+                </CardTitle>
+              </div>
+              <CardDescription className='text-slate-600'>
+                Cancel an existing escrow and reclaim tokens
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Form {...cancelForm}>
+                <form
+                  onSubmit={cancelForm.handleSubmit(onCancel)}
+                  className='space-y-4'
+                >
+                  <FormField
+                    control={cancelForm.control}
+                    name='escrowAccount'
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className='text-slate-700'>
+                          Escrow Account
+                        </FormLabel>
+                        <FormControl>
+                          <Input
+                            {...field}
+                            placeholder='Enter escrow account address...'
+                            className='border-slate-200 focus:border-red-500'
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <Button
+                    type='submit'
+                    variant='destructive'
+                    disabled={isCancelling || !connected}
+                    className='w-full'
+                  >
+                    {isCancelling ? 'Cancelling...' : 'Cancel Escrow'}
+                  </Button>
+                </form>
+              </Form>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
     </div>
   );
 }
