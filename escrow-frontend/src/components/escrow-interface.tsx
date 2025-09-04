@@ -225,7 +225,8 @@ export function EscrowInterface() {
                 variant='default'
                 className='bg-green-100 text-green-800 border-green-200'
               >
-                Wallet Connected
+                {publicKey?.toString().slice(0, 8)}...
+                {publicKey?.toString().slice(-8)};
               </Badge>
             ) : (
               <Badge
