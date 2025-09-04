@@ -2,7 +2,23 @@ import { Connection, PublicKey } from '@solana/web3.js';
 import {
   getAssociatedTokenAddress,
   createAssociatedTokenAccountInstruction,
+  getMint,
 } from '@solana/spl-token';
+import toast from 'react-hot-toast';
+
+// decimals from on-chain mint info
+export async function getTokenDecimals(
+  connection: Connection,
+  mint: PublicKey
+): Promise<number> {
+  try {
+    const mintInfo = await getMint(connection, mint);
+    return mintInfo.decimals;
+  } catch (err) {
+    toast.error('Failed to get token decimals');
+    return 0;
+  }
+}
 
 // user amount to raw token units
 // parseTokenAmount("1.5", 9) = 1500000000n
