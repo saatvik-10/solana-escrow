@@ -16,45 +16,51 @@ import {
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import toast from 'react-hot-toast';
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from '@/components/ui/form';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
 
 export function EscrowInterface() {
   const { publicKey, connected } = useWallet();
 
-  //initialization form states
-  const {
-    register: initializeRegister,
-    handleSubmit: initializeHandleSubmit,
-    formState: { errors: initializeErrors },
-    reset: initializeReset,
-  } = useForm<InitializeEscrow>({
+  // form instances
+  const initializeForm = useForm<InitializeEscrow>({
     resolver: zodResolver(InitializeEscrowSchema),
+    defaultValues: {
+      initializerTokenMint: '',
+      receiverTokenMint: '',
+      initializerAmount: '',
+      receiverAmount: '',
+    },
   });
 
-  const {
-    register: depositRegister,
-    handleSubmit: depositHandleSubmit,
-    formState: { errors: depositErrors },
-    reset: depositReset,
-  } = useForm<DepositEscrow>({
+  const depositForm = useForm<DepositEscrow>({
     resolver: zodResolver(DepositEscrowSchema),
+    defaultValues: {
+      escrowAccount: '',
+      depositAmount: '',
+    },
   });
 
-  const {
-    register: completeRegister,
-    handleSubmit: completeHandleSubmit,
-    formState: { errors: completeErrors },
-    reset: completeReset,
-  } = useForm<CompletedEscrow>({
+  const completeForm = useForm<CompletedEscrow>({
     resolver: zodResolver(CompletedEscrowSchema),
+    defaultValues: {
+      escrowAccount: '',
+    },
   });
 
-  const {
-    register: cancelRegister,
-    handleSubmit: cancelHandleSubmit,
-    formState: { errors: cancelErrors },
-    reset: cancelReset,
-  } = useForm<CancelledEscrow>({
+  const cancelForm = useForm<CancelledEscrow>({
     resolver: zodResolver(CancelledEscrowSchema),
+    defaultValues: {
+      escrowAccount: '',
+    },
   });
 
   //operations
@@ -92,7 +98,7 @@ export function EscrowInterface() {
 
       //sending transaction later
 
-      initializeReset();
+      initializeForm.reset();
 
       setSuccess('Init Payload ready!');
     } catch (err: any) {
@@ -121,7 +127,7 @@ export function EscrowInterface() {
 
       //sending deposit instruction
 
-      depositReset();
+      depositForm.reset();
 
       setSuccess('Deposit Payload Ready!');
     } catch (err: any) {
@@ -147,7 +153,7 @@ export function EscrowInterface() {
 
       //sending on chain call
 
-      completeReset();
+      completeForm.reset();
       setSuccess('Complete payload ready!');
     } catch (err: any) {
       setErr(err?.message);
@@ -172,7 +178,7 @@ export function EscrowInterface() {
 
       //sending cancel login
 
-      cancelReset();
+      cancelForm.reset();
       setSuccess('Cancel payload ready!');
     } catch (err: any) {
       setErr(err?.message);
@@ -187,132 +193,168 @@ export function EscrowInterface() {
       <h1>Escrow Interface</h1>
 
       {/* init form */}
-      <form
-        onSubmit={initializeHandleSubmit(onInitialize)}
-        className='space-y-3'
-      >
-        <div>
-          <label>Initializer Token Mint</label>
-          <input
-            {...initializeRegister('initializerTokenMint')}
-            className='w-full'
+      <Form {...initializeForm}>
+        <form
+          onSubmit={initializeForm.handleSubmit(onInitialize)}
+          className='space-y-4'
+        >
+          <FormField
+            control={initializeForm.control}
+            name='initializerTokenMint'
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Initializer Token Mint</FormLabel>
+                <FormControl>
+                  <Input {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
           />
-          {initializeErrors.initializerTokenMint && (
-            <p className='text-sm text-red-600'>
-              {initializeErrors.initializerTokenMint.message}
-            </p>
-          )}
-        </div>
 
-        <div>
-          <label>Receiver Token Mint</label>
-          <input
-            {...initializeRegister('receiverTokenMint')}
-            className='w-full'
+          <FormField
+            control={initializeForm.control}
+            name='receiverTokenMint'
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Receiver Token Mint</FormLabel>
+                <FormControl>
+                  <Input {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
           />
-          {initializeErrors.receiverTokenMint && (
-            <p className='text-sm text-red-600'>
-              {initializeErrors.receiverTokenMint.message}
-            </p>
-          )}
-        </div>
 
-        <div>
-          <label>Initializer Amount</label>
-          <input
-            {...initializeRegister('initializerAmount')}
-            className='w-full'
+          <FormField
+            control={initializeForm.control}
+            name='initializerAmount'
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Initializer Amount</FormLabel>
+                <FormControl>
+                  <Input {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
           />
-          {initializeErrors.initializerAmount && (
-            <p className='text-sm text-red-600'>
-              {initializeErrors.initializerAmount.message}
-            </p>
-          )}
-        </div>
 
-        <div>
-          <label>Receiver Amount</label>
-          <input {...initializeRegister('receiverAmount')} className='w-full' />
-          {initializeErrors.receiverAmount && (
-            <p className='text-sm text-red-600'>
-              {initializeErrors.receiverAmount.message}
-            </p>
-          )}
-        </div>
+          <FormField
+            control={initializeForm.control}
+            name='receiverAmount'
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Receiver Amount</FormLabel>
+                <FormControl>
+                  <Input {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
 
-        <button disabled={isInitializing} className='btn-primary'>
-          {isInitializing ? 'Initializing…' : 'Initialize Escrow'}
-        </button>
-      </form>
+          <Button type='submit' disabled={isInitializing}>
+            {isInitializing ? 'Initializing…' : 'Initialize Escrow'}
+          </Button>
+        </form>
+      </Form>
 
       {/* deposit form */}
-      <form onSubmit={depositHandleSubmit(onDeposit)} className='space-y-3'>
-        <div>
-          <label>Escrow Account (pubkey)</label>
-          <input {...depositRegister('escrowAccount')} className='w-full' />
-          {depositErrors.escrowAccount && (
-            <p className='text-red-600'>
-              {depositErrors.escrowAccount.message}
-            </p>
-          )}
-        </div>
+      <Form {...depositForm}>
+        <form
+          onSubmit={depositForm.handleSubmit(onDeposit)}
+          className='space-y-4'
+        >
+          <FormField
+            control={depositForm.control}
+            name='escrowAccount'
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Escrow Account (pubkey)</FormLabel>
+                <FormControl>
+                  <Input {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
 
-        <div>
-          <label>Deposit Amount</label>
-          <input {...depositRegister('depositAmount')} className='w-full' />
-          {depositErrors.depositAmount && (
-            <p className='text-red-600'>
-              {depositErrors.depositAmount.message}
-            </p>
-          )}
-        </div>
+          <FormField
+            control={depositForm.control}
+            name='depositAmount'
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Deposit Amount</FormLabel>
+                <FormControl>
+                  <Input {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
 
-        <button disabled={isDepositing} className='btn-primary'>
-          {isDepositing ? 'Depositing…' : 'Deposit'}
-        </button>
-      </form>
+          <Button type='submit' disabled={isDepositing}>
+            {isDepositing ? 'Depositing…' : 'Deposit'}
+          </Button>
+        </form>
+      </Form>
 
       {/* completion form */}
-      <form onSubmit={completeHandleSubmit(onComplete)} className='space-y-3'>
-        <div>
-          <label>Escrow Account (to complete)</label>
-          <input {...completeRegister('escrowAccount')} className='w-full' />
-          {completeErrors.escrowAccount && (
-            <p className='text-sm text-red-600'>
-              {completeErrors.escrowAccount.message}
-            </p>
-          )}
-        </div>
-
-        <button
-          type='submit'
-          className='btn-primary'
-          disabled={isCompleting || !connected}
+      <Form {...completeForm}>
+        <form
+          onSubmit={completeForm.handleSubmit(onComplete)}
+          className='space-y-4'
         >
-          {isCompleting ? 'Completing…' : 'Complete Swap'}
-        </button>
-      </form>
+          <FormField
+            control={completeForm.control}
+            name='escrowAccount'
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Escrow Account (to complete)</FormLabel>
+                <FormControl>
+                  <Input {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <Button type='submit' disabled={isCompleting || !connected}>
+            {isCompleting ? 'Completing…' : 'Complete Swap'}
+          </Button>
+        </form>
+      </Form>
 
       {/* cancellation form */}
-      <form onSubmit={cancelHandleSubmit(onCancel)} className='space-y-3'>
-        <div>
-          <label>Escrow Account (to cancel)</label>
-          <input {...cancelRegister('escrowAccount')} className='w-full' />
-          {cancelErrors.escrowAccount && (
-            <p className='text-sm text-red-600'>
-              {cancelErrors.escrowAccount.message}
-            </p>
-          )}
-        </div>
-
-        <button
-          type='submit'
-          className='btn-danger'
-          disabled={isCancelling || !connected}
+      <Form {...cancelForm}>
+        <form
+          onSubmit={cancelForm.handleSubmit(onCancel)}
+          className='space-y-4'
         >
-          {isCancelling ? 'Cancelling…' : 'Cancel Escrow'}
-        </button>
-      </form>
+          <FormField
+            control={cancelForm.control}
+            name='escrowAccount'
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Escrow Account (to cancel)</FormLabel>
+                <FormControl>
+                  <Input {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <Button
+            type='submit'
+            variant='destructive'
+            disabled={isCancelling || !connected}
+          >
+            {isCancelling ? 'Cancelling…' : 'Cancel Escrow'}
+          </Button>
+        </form>
+      </Form>
     </div>
   );
 }
