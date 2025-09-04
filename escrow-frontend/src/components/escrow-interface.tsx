@@ -64,7 +64,7 @@ export function EscrowInterface() {
   const [isInitializing, setIsInitializing] = useState<boolean>(false);
   const [isDepositing, setIsDepositing] = useState<boolean>(false);
   const [isCompleting, setIsCompleting] = useState<boolean>(false);
-  const [isCancelling, setIsCanceling] = useState<boolean>(false);
+  const [isCancelling, setIsCancelling] = useState<boolean>(false);
 
   const [err, setErr] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -132,10 +132,61 @@ export function EscrowInterface() {
     }
   };
 
+  const onComplete = async (data: CompletedEscrow) => {
+    setErr(null);
+    setIsCompleting(true);
+
+    try {
+      const escrowPK = data.escrowAccount.trim();
+
+      if (!escrowPK) toast.error('Escrow account is required!');
+
+      console.log('Completion Payload!', {
+        escrowAccount: data.escrowAccount,
+      });
+
+      //sending on chain call
+
+      completeReset();
+      setSuccess('Complete payload ready!');
+    } catch (err: any) {
+      setErr(err?.message);
+      toast(err);
+    } finally {
+      setIsCompleting(false);
+    }
+  };
+
+  const onCancel = async (data: CancelledEscrow) => {
+    setErr(null);
+    setIsCancelling(true);
+
+    try {
+      const escrowPK = data.escrowAccount.trim();
+
+      if (!escrowPK) toast.error('Escrow account is required!');
+
+      console.log('Cancellation Payload!', {
+        escrowAccount: data.escrowAccount,
+      });
+
+      //sending cancel login
+
+      cancelReset();
+      setSuccess('Cancel payload ready!');
+    } catch (err: any) {
+      setErr(err?.message);
+      toast.error(err);
+    } finally {
+      setIsCancelling(false);
+    }
+  };
+
   return (
     <div>
       <h1>Escrow Interface</h1>
 
+      {/* init form */}
       <form
         onSubmit={initializeHandleSubmit(onInitialize)}
         className='space-y-3'
@@ -194,6 +245,7 @@ export function EscrowInterface() {
         </button>
       </form>
 
+      {/* deposit form */}
       <form onSubmit={depositHandleSubmit(onDeposit)} className='space-y-3'>
         <div>
           <label>Escrow Account (pubkey)</label>
@@ -217,6 +269,48 @@ export function EscrowInterface() {
 
         <button disabled={isDepositing} className='btn-primary'>
           {isDepositing ? 'Depositing…' : 'Deposit'}
+        </button>
+      </form>
+
+      {/* completion form */}
+      <form onSubmit={completeHandleSubmit(onComplete)} className='space-y-3'>
+        <div>
+          <label>Escrow Account (to complete)</label>
+          <input {...completeRegister('escrowAccount')} className='w-full' />
+          {completeErrors.escrowAccount && (
+            <p className='text-sm text-red-600'>
+              {completeErrors.escrowAccount.message}
+            </p>
+          )}
+        </div>
+
+        <button
+          type='submit'
+          className='btn-primary'
+          disabled={isCompleting || !connected}
+        >
+          {isCompleting ? 'Completing…' : 'Complete Swap'}
+        </button>
+      </form>
+
+      {/* cancellation form */}
+      <form onSubmit={cancelHandleSubmit(onCancel)} className='space-y-3'>
+        <div>
+          <label>Escrow Account (to cancel)</label>
+          <input {...cancelRegister('escrowAccount')} className='w-full' />
+          {cancelErrors.escrowAccount && (
+            <p className='text-sm text-red-600'>
+              {cancelErrors.escrowAccount.message}
+            </p>
+          )}
+        </div>
+
+        <button
+          type='submit'
+          className='btn-danger'
+          disabled={isCancelling || !connected}
+        >
+          {isCancelling ? 'Cancelling…' : 'Cancel Escrow'}
         </button>
       </form>
     </div>
