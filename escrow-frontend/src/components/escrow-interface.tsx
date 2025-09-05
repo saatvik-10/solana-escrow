@@ -280,9 +280,9 @@ export function EscrowInterface() {
         )}
 
         {/* Forms Grid */}
-        <div className='grid grid-cols-1 lg:grid-cols-2 gap-8'>
+        <div className='grid grid-cols-1 lg:grid-cols-2 gap-8 items-stretch'>
           {/* Initialize Escrow Card */}
-          <Card className='shadow-sm border-slate-200'>
+          <Card className='shadow-sm border-slate-200 flex flex-col h-full'>
             <CardHeader className='space-y-2'>
               <div className='flex items-center gap-2'>
                 <ArrowRightLeft className='h-5 w-5 text-blue-600' />
@@ -294,11 +294,11 @@ export function EscrowInterface() {
                 Create a new escrow for token swapping
               </CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className='flex-1 flex flex-col'>
               <Form {...initializeForm}>
                 <form
                   onSubmit={initializeForm.handleSubmit(onInitialize)}
-                  className='space-y-4'
+                  className='flex-1 flex flex-col space-y-4'
                 >
                   <FormField
                     control={initializeForm.control}
@@ -382,22 +382,24 @@ export function EscrowInterface() {
                     />
                   </div>
 
-                  <Button
-                    type='submit'
-                    disabled={isInitializing || !connected}
-                    className='w-full bg-blue-600 hover:bg-blue-700 text-white'
-                  >
-                    {isInitializing
-                      ? 'Creating Escrow...'
-                      : 'Initialize Escrow'}
-                  </Button>
+                  <div className='mt-auto pt-4'>
+                    <Button
+                      type='submit'
+                      disabled={isInitializing || !connected}
+                      className='w-full bg-blue-600 hover:bg-blue-700 text-white'
+                    >
+                      {isInitializing
+                        ? 'Creating Escrow...'
+                        : 'Initialize Escrow'}
+                    </Button>
+                  </div>
                 </form>
               </Form>
             </CardContent>
           </Card>
 
           {/* Deposit Card */}
-          <Card className='shadow-sm border-slate-200'>
+          <Card className='shadow-sm border-slate-200 flex flex-col h-full'>
             <CardHeader className='space-y-2'>
               <div className='flex items-center gap-2'>
                 <DollarSign className='h-5 w-5 text-green-600' />
@@ -409,11 +411,11 @@ export function EscrowInterface() {
                 Deposit tokens into an existing escrow
               </CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className='flex-1 flex flex-col'>
               <Form {...depositForm}>
                 <form
                   onSubmit={depositForm.handleSubmit(onDeposit)}
-                  className='space-y-4'
+                  className='flex-1 flex flex-col space-y-4'
                 >
                   <FormField
                     control={depositForm.control}
@@ -455,20 +457,22 @@ export function EscrowInterface() {
                     )}
                   />
 
-                  <Button
-                    type='submit'
-                    disabled={isDepositing || !connected}
-                    className='w-full bg-green-600 hover:bg-green-700 text-white'
-                  >
-                    {isDepositing ? 'Depositing...' : 'Deposit Tokens'}
-                  </Button>
+                  <div className='mt-auto pt-4'>
+                    <Button
+                      type='submit'
+                      disabled={isDepositing || !connected}
+                      className='w-full bg-green-600 hover:bg-green-700 text-white'
+                    >
+                      {isDepositing ? 'Depositing...' : 'Deposit Tokens'}
+                    </Button>
+                  </div>
                 </form>
               </Form>
             </CardContent>
           </Card>
 
           {/* Complete Swap Card */}
-          <Card className='shadow-sm border-slate-200'>
+          <Card className='shadow-sm border-slate-200 flex flex-col h-full'>
             <CardHeader className='space-y-2'>
               <div className='flex items-center gap-2'>
                 <CheckCircle className='h-5 w-5 text-purple-600' />
