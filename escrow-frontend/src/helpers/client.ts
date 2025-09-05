@@ -11,9 +11,8 @@ import { Buffer } from 'buffer';
 import { createATA } from '@/helpers/ata';
 import toast from 'react-hot-toast';
 
-// export const ESCROW_PROGRAM_ID = new PublicKey(process.env.PROGRAM_ID!);
 export const ESCROW_PROGRAM_ID = new PublicKey(
-  '1111111111111111111111111111111'
+  process.env.NEXT_PUBLIC_PROGRAM_ID!
 );
 
 //instruction data for init escrow
