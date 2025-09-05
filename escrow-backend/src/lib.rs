@@ -1,6 +1,7 @@
 use borsh::{BorshDeserialize, BorshSerialize};
 use solana_program::pubkey::Pubkey;
 
+pub mod entrypoint;
 pub mod errors;
 pub mod instructions;
 pub mod processor;
