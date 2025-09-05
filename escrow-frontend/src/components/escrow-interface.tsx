@@ -143,7 +143,7 @@ export function EscrowInterface() {
       toast.success('Escrow initialized successfully!');
     } catch (err: any) {
       setErr(err?.message);
-      toast.error(err);
+      toast.error(err?.message);
     } finally {
       setIsInitializing(false);
     }
@@ -172,7 +172,7 @@ export function EscrowInterface() {
       setSuccess('Deposit Payload Ready!');
     } catch (err: any) {
       setErr(err?.message);
-      toast.error(err);
+      toast.error(err?.message);
     } finally {
       setIsDepositing(false);
     }
@@ -222,7 +222,7 @@ export function EscrowInterface() {
       setSuccess('Cancel payload ready!');
     } catch (err: any) {
       setErr(err?.message);
-      toast.error(err);
+      toast.error(err?.message);
     } finally {
       setIsCancelling(false);
     }
