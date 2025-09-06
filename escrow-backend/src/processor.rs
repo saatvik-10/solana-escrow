@@ -1,5 +1,5 @@
 use crate::errors::EscrowError;
-use crate::instructions::{EscrowInstruction, check_rent_exempt};
+use crate::instructions::{check_rent_exempt, EscrowInstruction};
 use crate::{Escrow, EscrowStatus};
 use borsh::{BorshDeserialize, BorshSerialize};
 use solana_program::program::invoke_signed;
