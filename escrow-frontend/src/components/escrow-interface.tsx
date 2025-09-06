@@ -16,7 +16,7 @@ import {
 } from '@/validators/escrow.validators';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import toast from 'react-hot-toast';
+import toast, { ToastBar } from 'react-hot-toast';
 import {
   Form,
   FormControl,
@@ -44,7 +44,11 @@ import {
   DollarSign,
   X,
 } from 'lucide-react';
-import { initializeEscrow } from '@/helpers/client';
+import {
+  initializeEscrow,
+  depositEscrow,
+  readEscrowData,
+} from '@/helpers/client';
 import { connection } from '@/helpers/connection';
 import { parseTokenAmount, getTokenDecimals } from '@/helpers/ata';
 
@@ -138,9 +142,9 @@ export function EscrowInterface() {
         amountB,
       });
 
-      setSuccess(`Escrow created! TX: ${res.txId.slice(0, 8)}...`);
       initializeForm.reset();
       toast.success('Escrow initialized successfully!');
+      setSuccess(`Escrow created! Transaction: ${res.txId.slice(0, 8)}...`);
     } catch (err: any) {
       setErr(err?.message);
       toast.error(err?.message);
@@ -154,22 +158,75 @@ export function EscrowInterface() {
     setIsDepositing(true);
 
     try {
+      if (!connected || !publicKey) {
+        toast.error('Please connect your wallet first');
+        return;
+      }
+
+      let escrowAccountPubkey: PublicKey;
+
+      try {
+        escrowAccountPubkey = new PublicKey(data.escrowAccount.trim());
+      } catch (err) {
+        toast.error('Invalid escrow account address');
+        return;
+      }
+
       const amount = BigInt(data.depositAmount.trim());
 
       if (amount <= 0) {
         toast.error('Amount must be valid');
       }
 
-      console.log('Deposit Payload', {
-        escrowAmount: data.escrowAccount,
-        amount: data.depositAmount,
+      const escrowData = await readEscrowData(connection, escrowAccountPubkey);
+
+      const isUserA = publicKey.equals(escrowData.user_a);
+      const isUserB =
+        escrowData.user_b.equals(PublicKey.default) ||
+        publicKey.equals(escrowData.user_b);
+
+      if (!isUserA || !isUserB) {
+        toast.error('You are not authorized to deposit to this escrow');
+        return;
+      }
+
+      if (!isUserA && escrowData.token_a_deposited) {
+        toast.error('Token A already deposited');
+        return;
+      }
+
+      if (!isUserB && escrowData.token_b_deposited) {
+        toast.error('Token B already deposited');
+        return;
+      }
+
+      const tokenMint = isUserA
+        ? escrowData.token_a_mint
+        : escrowData.token_b_mint;
+      const expectedAmount = isUserA
+        ? escrowData.amount_a
+        : escrowData.amount_b;
+
+      if (amount != expectedAmount) {
+        toast.error(`Expected Amount was: ${expectedAmount} but got ${amount}`);
+        return;
+      }
+
+      const wallet = { publicKey, signTransaction };
+
+      const res = await depositEscrow({
+        connection,
+        userWallet: wallet,
+        escrowAccount: escrowAccountPubkey,
+        tokenMint,
+        amount,
       });
 
-      //sending deposit instruction
-
       depositForm.reset();
-
-      setSuccess('Deposit Payload Ready!');
+      toast.success('Tokens deposited successfully!');
+      setSuccess(
+        `Deposit successfull! Transaction: ${res.txId.slice(0, 8)}...`
+      );
     } catch (err: any) {
       setErr(err?.message);
       toast.error(err?.message);
