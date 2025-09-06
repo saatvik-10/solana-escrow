@@ -11,7 +11,6 @@ import { Buffer } from 'buffer';
 import { createATA } from '@/helpers/ata';
 import toast from 'react-hot-toast';
 import { TOKEN_PROGRAM_ID } from '@solana/spl-token';
-import { UnsafeBurnerWalletAdapter } from '@solana/wallet-adapter-wallets';
 
 export const ESCROW_PROGRAM_ID = new PublicKey(
   process.env.NEXT_PUBLIC_PROGRAM_ID!
@@ -209,4 +208,60 @@ export async function depositEscrow(params: {
   await connection.confirmTransaction(txId, 'confirmed');
 
   return { txId };
+}
+
+export async function readEscrowData(
+  connection: Connection,
+  escrowAccount: PublicKey
+) {
+  const accountInfo = await connection.getAccountInfo(escrowAccount);
+
+  if (!accountInfo || !accountInfo.data) {
+    throw new Error('Escrow account not found or has no data');
+  }
+
+  const data = Buffer.from(accountInfo.data);
+  let offset = 0;
+
+  const user_a = new PublicKey(data.slice(offset, offset + 32));
+  offset += 32;
+
+  const user_b = new PublicKey(data.slice(offset, offset + 32));
+  offset += 32;
+
+  const token_a_mint = new PublicKey(data.slice(offset, offset + 32));
+  offset += 32;
+
+  const token_b_mint = new PublicKey(data.slice(offset, offset + 32));
+  offset += 32;
+
+  const amount_a = data.readBigUInt64LE(offset);
+  offset += 8;
+
+  const amount_b = data.readBigUInt64LE(offset);
+  offset += 8;
+
+  const token_a_deposited = data.readUInt8(offset) == 1;
+  offset += 1;
+
+  const token_b_deposited = data.readUInt8(offset) == 1;
+  offset += 1;
+
+  const vault_pda = new PublicKey(data.slice(offset, offset + 32));
+  offset += 32;
+
+  const status = data.readUInt8(offset);
+
+  return {
+    user_a,
+    user_b,
+    token_a_mint,
+    token_b_mint,
+    amount_a,
+    amount_b,
+    token_a_deposited,
+    token_b_deposited,
+    vault_pda,
+    status,
+  };
 }
