@@ -144,7 +144,11 @@ export function EscrowInterface() {
 
       initializeForm.reset();
       toast.success('Escrow initialized successfully!');
-      setSuccess(`Escrow created! Transaction: ${res.txId}`);
+      setSuccess(
+        `Escrow created! Escrow Account: ${
+          res.escrowAccount
+        } | TX: ${res.txId.slice(0, 8)}...`
+      );
     } catch (err: any) {
       setErr(err?.message);
       toast.error(err?.message);
@@ -226,8 +230,10 @@ export function EscrowInterface() {
       toast.success('Tokens deposited successfully!');
       setSuccess(`Deposit successfull! Transaction: ${res.txId}`);
     } catch (err: any) {
+      console.error(err);
       setErr(err?.message);
       toast.error(err?.message);
+      return;
     } finally {
       setIsDepositing(false);
     }
